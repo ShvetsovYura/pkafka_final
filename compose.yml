@@ -40,6 +40,47 @@ services:
       CONFLUENT_METRICS_ENABLE: 'true'
       CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
 
+
+  zookeeper2:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper2
+    container_name: zookeeper2
+    ports:
+      - "2182:2182"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2182
+      ZOOKEEPER_TICK_TIME: 2000
+
+  broker2:
+    image: confluentinc/cp-server:7.4.0
+    hostname: broker2
+    container_name: broker2
+    depends_on:
+      - zookeeper2
+    ports:
+      - "9093:9093"
+      - "9102:9102"
+    environment:
+      KAFKA_BROKER_ID: 21
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper2:2182'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker2:29093,PLAINTEXT_HOST://localhost:9093
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_JMX_PORT: 9102
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker2:29093
+      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+      CONFLUENT_METRICS_ENABLE: 'true'
+      CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
+   
+
   kafka-connect:
     image: confluentinc/cp-kafka-connect:7.0.1
     hostname: kafka-connect
@@ -61,6 +102,17 @@ services:
       CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
       CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.storage.StringConverter
       CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components,/etc/kafka-connect/jars"
+    # command: |
+    #   bash -c "
+    #     echo 'Waiting for Kafka to be ready...';
+    #     cub kafka-ready -b broker1:29092 1 30;
+    #     echo 'Creating topics...';
+    #     kafka-topics --bootstrap-server broker1:29092 --create --topic products_in --partitions 1 --replication-factor 1;
+    #     kafka-topics --bootstrap-server broker1:29092 --create --topic block --partitions 1 --replication-factor 1;
+    #     kafka-topics --bootstrap-server broker1:29092 --create --topic block-table --partitions 1 --replication-factor 1 --config cleanup.policy=compact;
+    #     kafka-topics --bootstrap-s    # command: |
+    #   bash -c "
+
     volumes:
       - ./confluent-hub-components/:/etc/kafka-connect/jars
       - ./connectors:/etc/kafka-connect/connectors
@@ -97,12 +149,80 @@ services:
   ui:
     image: provectuslabs/kafka-ui:v0.7.2
     container_name: kafka-ui
+    depends_on:
+      - broker1
+      # - broker2
+      - schema-registry
     ports:
-      - "8080:8080"
+      - "8088:8080"
     environment:
+      - KAFKA_CLUSTERS_0_NAME=main_cluster 
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=broker1:29092
+      - KAFKA_CLUSTERS_0_SCHEMAREGISTRY_URL="http://schema-registry:8081"  # URL вашего Schema Registry
+  
+      - KAFKA_CLUSTERS_1_NAME=replica 
+      - KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS=broker2:29093
+      - KAFKA_CLUSTERS_1_SCHEMAREGISTRY_URL="http://schema-registry:8081"  # URL вашего Schema Registry
+
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    ports:
+      - 9000:9000  # Namenode RPC for HDFS clients
+      - 9870:9870  # WebUI - dfs.namenode.http-address
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop.env
+
+  datanode1:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode1
+    ports:
+      - 9864:9864  # WebUI - dfs.datanode.http.address
+      - 9866:9866  # Data transfer - dfs.datanode.address
+    depends_on:
+      - namenode
+    volumes:
+      - hadoop_datanode1:/hadoop/dfs/data
+    env_file:
+      - ./hadoop.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+
+  spark:
+    image: docker.io/bitnami/spark:3.5
+    container_name: spark
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_USER=spark
+    ports:
+      - '8080:8080'
+      - '15002:15002'
+
+  spark-worker:
+    image: docker.io/bitnami/spark:3.5
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_USER=spark
 
 volumes:
+  hadoop_namenode:
+  hadoop_datanode1: 
   es_data:
 
 

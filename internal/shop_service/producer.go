@@ -6,11 +6,14 @@ import (
 
 	"github.com/ShvetsovYura/pkafka_final/internal/models"
 	registryclient "github.com/ShvetsovYura/pkafka_final/internal/registry_client"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
 func StartProducer(topic string, messagesCh <-chan models.Product, registryClient *registryclient.SchemaRegistryClient) {
-	var cfgMap = kafka.ConfigMap{}
+	var cfgMap = kafka.ConfigMap{
+		"bootstrap.servers": "localhost:9092",
+		"security.protocol": "plaintext",
+	}
 	deliveryChan := make(chan kafka.Event)
 
 	p, err := kafka.NewProducer(&cfgMap)

@@ -16,6 +16,7 @@ type SchemaRegistryClient struct {
 func NewSchemaRegistryClient() *SchemaRegistryClient {
 	url := "http://0.0.0.0:8081"
 	cfg := schemaregistry.NewConfig(url)
+
 	client, err := schemaregistry.NewClient(cfg)
 	if err != nil {
 		log.Fatalf("Failed to create schema registry client: %s\n", err)

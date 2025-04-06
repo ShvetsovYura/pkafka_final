@@ -1,0 +1,10 @@
+{
+    "name": "mirror2",
+    "connector.class": "org.apache.kafka.connect.mirror.MirrorSourceConnector",
+    "source.cluster.alias": "source",
+    "topics": "replicate_me",
+    "source.cluster.bootstrap.servers": "broker:29092",
+    "target.cluster.bootstrap.servers": "broker2:29093",
+    "producer.override.bootstrap.servers": "broker2:29093",
+    "offset-syncs.topic.replication.factor": "1"
+}
