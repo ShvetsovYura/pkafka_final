@@ -1,0 +1,5 @@
+package clientproducer
+
+func Producer() {
+
+}

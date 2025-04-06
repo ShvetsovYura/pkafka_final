@@ -1,0 +1,1 @@
+kafka-console-consumer --topic replicate_me --bootstrap-server broker:29092 
