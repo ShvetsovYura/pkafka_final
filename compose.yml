@@ -1,228 +1,115 @@
 ---
 version: '3.8'
+include:
+  - compose.kafka-main.yml
+  - compose.kafka-replica.yml
 services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
-    hostname: zookeeper
-    container_name: zookeeper
-    ports:
-      - "2181:2181"
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-
-  broker1:
-    image: confluentinc/cp-server:7.4.0
-    hostname: broker1
-    container_name: broker1
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-      - "9101:9101"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker1:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_JMX_PORT: 9101
-      KAFKA_JMX_HOSTNAME: localhost
-      KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker1:29092
-      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
-      CONFLUENT_METRICS_ENABLE: 'true'
-      CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
-
-
-  zookeeper2:
-    image: confluentinc/cp-zookeeper:7.4.0
-    hostname: zookeeper2
-    container_name: zookeeper2
-    ports:
-      - "2182:2182"
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2182
-      ZOOKEEPER_TICK_TIME: 2000
-
-  broker2:
-    image: confluentinc/cp-server:7.4.0
-    hostname: broker2
-    container_name: broker2
-    depends_on:
-      - zookeeper2
-    ports:
-      - "9093:9093"
-      - "9102:9102"
-    environment:
-      KAFKA_BROKER_ID: 21
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper2:2182'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker2:29093,PLAINTEXT_HOST://localhost:9093
-      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_JMX_PORT: 9102
-      KAFKA_JMX_HOSTNAME: localhost
-      KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker2:29093
-      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
-      CONFLUENT_METRICS_ENABLE: 'true'
-      CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
-   
-
-  kafka-connect:
+  connect:
     image: confluentinc/cp-kafka-connect:7.0.1
-    hostname: kafka-connect
-    container_name: kafka-connect
+    hostname: connect
+    container_name: connect
     depends_on:
       - broker1
+      - sr
     ports:
       - "8083:8083"
     environment:
       CONNECT_BOOTSTRAP_SERVERS: broker1:29092
-      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
-      CONNECT_GROUP_ID: kafka-connect-group
-      CONNECT_CONFIG_STORAGE_TOPIC: docker-connect-configs
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+      CONNECT_GROUP_ID: connect-group
+      CONNECT_CONFIG_STORAGE_TOPIC: connect-configs
       CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
-      CONNECT_OFFSET_STORAGE_TOPIC: kafka-connect-offsets
+      CONNECT_OFFSET_STORAGE_TOPIC: connect-offsets
       CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
-      CONNECT_STATUS_STORAGE_TOPIC: kafka-connect-status
+      CONNECT_STATUS_STORAGE_TOPIC: connect-status
       CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
       CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
-      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      # CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://sr:8081
       CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components,/etc/kafka-connect/jars"
-    # command: |
-    #   bash -c "
-    #     echo 'Waiting for Kafka to be ready...';
-    #     cub kafka-ready -b broker1:29092 1 30;
-    #     echo 'Creating topics...';
-    #     kafka-topics --bootstrap-server broker1:29092 --create --topic products_in --partitions 1 --replication-factor 1;
-    #     kafka-topics --bootstrap-server broker1:29092 --create --topic block --partitions 1 --replication-factor 1;
-    #     kafka-topics --bootstrap-server broker1:29092 --create --topic block-table --partitions 1 --replication-factor 1 --config cleanup.policy=compact;
-    #     kafka-topics --bootstrap-s    # command: |
-    #   bash -c "
-
     volumes:
       - ./confluent-hub-components/:/etc/kafka-connect/jars
-      - ./connectors:/etc/kafka-connect/connectors
-      - ./output:/tmp/kafka-connect-output
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/connectors"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
 
-  schema-registry:
+  connectors-init:
+    image: curlimages/curl:latest
+    container_name: connectors-init
+    hostname: connectors-init
+    depends_on:
+      connect:
+        condition: service_healthy
+    restart: on-failure
+    command: >
+      sh -c "
+        echo 'Waiting for Kafka Connect to start...';
+        sleep 10;
+        
+        echo 'Registering Elasticsearch Sink Connector...';
+        curl -X POST -H 'Content-Type: application/json' --data @/config/elastic-sink.json http://connect:8083/connectors;
+        echo 'Registering Hadoop Sink Connector...';
+        curl -X POST -H 'Content-Type: application/json' --data @/config/hadoop-sink.json http://connect:8083/connectors;
+        echo 'Registering Mirror Maker 2...';
+        curl -X POST -H 'Content-Type: application/json' --data @/config/mirror2-sink.json http://connect:8083/connectors;
+
+        echo 'Connectors registered!';
+      "
+    volumes:
+      - ./connectors:/config
+
+  sr:
     image: confluentinc/cp-schema-registry:7.4.0
-    hostname: schema-registry
-    container_name: schema-registry
+    hostname: sr
+    container_name: sr
     depends_on:
       - broker1
     ports:
       - "8081:8081"
     environment:
-      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_HOST_NAME: sr
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker1:29092'
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
 
-  elasticsearch:
+  elastic:
     image: elasticsearch:8.12.0
-    container_name: elasticsearch
+    container_name: elastic
+    hostname: elastic
+    ports:
+      - "9200:9200"
     depends_on:
       - broker1
-      - kafka-connect
+      - connect
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1g -Xmx1g
       - xpack.security.enabled=false # Отключаем security для разработки
     volumes:
       - es_data:/usr/share/elasticsearch/data
-    ports:
-      - "9200:9200"
 
   ui:
     image: provectuslabs/kafka-ui:v0.7.2
     container_name: kafka-ui
+    hostname: ui
     depends_on:
       - broker1
       # - broker2
-      - schema-registry
+      - sr
     ports:
       - "8088:8080"
     environment:
       - KAFKA_CLUSTERS_0_NAME=main_cluster 
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=broker1:29092
-      - KAFKA_CLUSTERS_0_SCHEMAREGISTRY_URL="http://schema-registry:8081"  # URL вашего Schema Registry
+      - KAFKA_CLUSTERS_0_SCHEMAREGISTRY_URL="http://sr:8081"  # URL вашего Schema Registry
   
       - KAFKA_CLUSTERS_1_NAME=replica 
       - KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS=broker2:29093
-      - KAFKA_CLUSTERS_1_SCHEMAREGISTRY_URL="http://schema-registry:8081"  # URL вашего Schema Registry
-
-  namenode:
-    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-    container_name: namenode
-    ports:
-      - 9000:9000  # Namenode RPC for HDFS clients
-      - 9870:9870  # WebUI - dfs.namenode.http-address
-    volumes:
-      - hadoop_namenode:/hadoop/dfs/name
-    environment:
-      - CLUSTER_NAME=test
-    env_file:
-      - ./hadoop.env
-
-  datanode1:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode1
-    ports:
-      - 9864:9864  # WebUI - dfs.datanode.http.address
-      - 9866:9866  # Data transfer - dfs.datanode.address
-    depends_on:
-      - namenode
-    volumes:
-      - hadoop_datanode1:/hadoop/dfs/data
-    env_file:
-      - ./hadoop.env
-    environment:
-      SERVICE_PRECONDITION: "namenode:9870"
-
-  spark:
-    image: docker.io/bitnami/spark:3.5
-    container_name: spark
-    environment:
-      - SPARK_MODE=master
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
-      - SPARK_USER=spark
-    ports:
-      - '8080:8080'
-      - '15002:15002'
-
-  spark-worker:
-    image: docker.io/bitnami/spark:3.5
-    container_name: spark-worker
-    environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark:7077
-      - SPARK_WORKER_MEMORY=1G
-      - SPARK_WORKER_CORES=1
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
-      - SPARK_USER=spark
+      - KAFKA_CLUSTERS_1_SCHEMAREGISTRY_URL="http://sr:8081"  # URL вашего Schema Registry
 
 volumes:
-  hadoop_namenode:
-  hadoop_datanode1: 
   es_data:
 
 
