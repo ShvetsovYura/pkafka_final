@@ -2,7 +2,7 @@
 version: '3.8'
 include:
   - compose.kafka-main.yml
-  - compose.kafka-replica.yml
+  # - compose.kafka-replica.yml
 services:
   connect:
     image: confluentinc/cp-kafka-connect:7.0.1
@@ -35,6 +35,8 @@ services:
       interval: 5s
       timeout: 10s
       retries: 10
+    networks:
+      pnet:
 
   connectors-init:
     image: curlimages/curl:latest
@@ -101,13 +103,17 @@ services:
     ports:
       - "8088:8080"
     environment:
-      - KAFKA_CLUSTERS_0_NAME=main_cluster 
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=broker1:29092
-      - KAFKA_CLUSTERS_0_SCHEMAREGISTRY_URL="http://sr:8081"  # URL вашего Schema Registry
+      KAFKA_CLUSTERS_0_NAME: main_cluster 
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker1:29092
+      # KAFKA_CLUSTERS_0_PROPERTIES_SSL_TRUSTSTORE_TYPE: PEM
+      # KAFKA_CLUSTERS_0_PROPERTIES_SSL_TRUSTSTORE_CERTIFICATES: /etc/kafka/ssl/ca-cert.pem
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY_URL: "http://sr:8081"  # URL вашего Schema Registry
   
-      - KAFKA_CLUSTERS_1_NAME=replica 
-      - KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS=broker2:29093
-      - KAFKA_CLUSTERS_1_SCHEMAREGISTRY_URL="http://sr:8081"  # URL вашего Schema Registry
+      # - KAFKA_CLUSTERS_1_NAME=replica 
+      # - KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS=broker2:29093
+      # - KAFKA_CLUSTERS_1_SCHEMAREGISTRY_URL="http://sr:8081"  # URL вашего Schema Registry
+    volumes:
+      - ./ca-cert.pem:/etc/kafka/ssl/ca-cert.pem
 
 volumes:
   es_data:
