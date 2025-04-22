@@ -104,16 +104,28 @@ services:
       - "8088:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: main_cluster 
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker1:29092
-      # KAFKA_CLUSTERS_0_PROPERTIES_SSL_TRUSTSTORE_TYPE: PEM
-      # KAFKA_CLUSTERS_0_PROPERTIES_SSL_TRUSTSTORE_CERTIFICATES: /etc/kafka/ssl/ca-cert.pem
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka.local:9994
       KAFKA_CLUSTERS_0_SCHEMAREGISTRY_URL: "http://sr:8081"  # URL вашего Schema Registry
-  
+
+      KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: "SASL_SSL"
+      KAFKA_CLUSTERS_0_PROPERTIES_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "" # Отключает проверку имени хоста
+
+      KAFKA_CLUSTERS_0_PROPERTIES_SSL_KEYSTORE_LOCATION: "/certs/keystore.jks"
+      KAFKA_CLUSTERS_0_PROPERTIES_SSL_KEYSTORE_PASSWORD: "clientpass"
+      KAFKA_CLUSTERS_0_PROPERTIES_SSL_TRUSTSTORE_LOCATION: "/certs/truststore.jks"
+      KAFKA_CLUSTERS_0_PROPERTIES_SSL_TRUSTSTORE_PASSWORD: "clienttrustpass"
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: "PLAIN"
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"admin\" password=\"admin-secret\";"
       # - KAFKA_CLUSTERS_1_NAME=replica 
       # - KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS=broker2:29093
       # - KAFKA_CLUSTERS_1_SCHEMAREGISTRY_URL="http://sr:8081"  # URL вашего Schema Registry
     volumes:
-      - ./ca-cert.pem:/etc/kafka/ssl/ca-cert.pem
+      # - ./ca-cert.pem:/etc/kafka/ssl/ca-cert.pem
+
+      - ./secrets/ui-certs/client.truststore.jks:/certs/truststore.jks
+      - ./secrets/ui-certs/client.keystore.jks:/certs/keystore.jks
+    networks:
+      pnet:
 
 volumes:
   es_data:

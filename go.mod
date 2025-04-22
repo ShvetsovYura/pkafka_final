@@ -12,6 +12,7 @@ require (
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/lovoo/goka v1.1.13
+	github.com/segmentio/kafka-go v0.4.47
 )
 
 require (
