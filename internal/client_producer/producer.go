@@ -1,5 +1,0 @@
-package clientproducer
-
-func Producer() {
-
-}

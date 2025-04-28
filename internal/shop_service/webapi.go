@@ -9,7 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func StartApi(messagesCh chan models.Product) {
+func StartApi(addr string, messagesCh chan models.Product) {
 	r := chi.NewRouter()
 	r.Post("/product", func(w http.ResponseWriter, r *http.Request) {
 		var product models.Product
@@ -27,6 +27,6 @@ func StartApi(messagesCh chan models.Product) {
 		messagesCh <- product
 	})
 
-	http.ListenAndServe(":9082", r)
+	http.ListenAndServe(addr, r)
 
 }

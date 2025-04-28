@@ -5,6 +5,7 @@ go 1.23.2
 toolchain go1.24.2
 
 require (
+	github.com/IBM/sarama v1.41.3
 	github.com/apache/spark-connect-go/v35 v35.0.0-20250317154112-ffd832059443
 	github.com/colinmarc/hdfs/v2 v2.4.0
 	github.com/confluentinc/confluent-kafka-go/v2 v2.8.0
@@ -12,12 +13,11 @@ require (
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/lovoo/goka v1.1.13
-	github.com/segmentio/kafka-go v0.4.47
+	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
-	github.com/IBM/sarama v1.41.3 // indirect
 	github.com/apache/arrow-go/v18 v18.2.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect

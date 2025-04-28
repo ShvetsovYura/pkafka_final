@@ -1,41 +1,99 @@
 services:
-  
-  zookeeper2:
+  zookeeper-replica:
     image: confluentinc/cp-zookeeper:7.4.0
-    hostname: zookeeper2
-    container_name: zookeeper2
+    hostname: zookeeper-replica
+    container_name: zookeeper-replica
     ports:
-      - "2182:2182"
+      - 2182:2182
     environment:
       ZOOKEEPER_CLIENT_PORT: 2182
       ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_REQUIRE_CLIENT_AUTH_SCHEME: sasl
+      ZOOKEEPER_AUTH_PROVIDER_1: "org.apache.zookeeper.server.auth.SASLAuthenticationProvider"
+      ZOOKEEPER_SASL_ENABLED: true
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/zookeeper/zookeeper_server_jaas.conf"
+    volumes:
+      - ./secrets/zookeeper-replica/zookeeper_server_jaas.conf:/etc/zookeeper/zookeeper_server_jaas.conf
+    networks:
+      pnet:
 
-  broker2:
+  broker-replica1:
     image: confluentinc/cp-server:7.4.0
-    hostname: broker2
-    container_name: broker2
+    hostname: br1.kafka.local
+    container_name: broker-replica1
     depends_on:
-      - zookeeper2
+      - zookeeper-replica
     ports:
-      - "9093:9093"
-      - "9102:9102"
-    environment:
-      KAFKA_BROKER_ID: 21
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper2:2182'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker2:29093,PLAINTEXT_HOST://localhost:9093
-      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_JMX_PORT: 9102
-      KAFKA_JMX_HOSTNAME: localhost
-      KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker2:29093
-      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
-      CONFLUENT_METRICS_ENABLE: 'true'
-      CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
-   
+      # - "9092:9092"
+      # - "9101:9101"
+      - 9593:9593
+      - 9594:9594
+    env_file:
+      - ./envs/kafka-replica.common.env
+      - ./envs/broker-replica1.env  # Подключаем общие переменные
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "broker-replica1:39092", "--list"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    volumes:
+      - ./secrets/cluster-replica_server_jaas.conf:/etc/kafka/jaas/kafka_server_jaas.conf
+      # - ./secrets/broker1/client.properties:/tmp/client.conf
+      - ./secrets/broker-replica1/creds:/etc/kafka/secrets
+    networks:
+      pnet:
+        ipv4_address: 192.168.0.111
+
+  broker-replica2:
+    image: confluentinc/cp-server:7.4.0
+    hostname: br2.kafka.local
+    container_name: broker-replica2
+    depends_on:
+      - zookeeper-replica
+      - broker-replica1
+    ports:
+      # - "9092:9092"
+      # - "9101:9101"
+      - "9693:9693"
+      - "9694:9694"
+    env_file:
+      - ./envs/kafka-replica.common.env
+      - ./envs/broker-replica2.env  # Подключаем общие переменные
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "broker-replica2:39092", "--list"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - ./secrets/cluster-replica_server_jaas.conf:/etc/kafka/jaas/kafka_server_jaas.conf
+      - ./secrets/broker-replica2/creds:/etc/kafka/secrets
+    networks:
+      pnet:
+        ipv4_address: 192.168.0.112
+
+  broker-replica3:
+    image: confluentinc/cp-server:7.4.0
+    hostname: br3.kafka.local
+    container_name: broker-replica3
+    depends_on:
+      - zookeeper-replica
+      - broker-replica1
+    ports:
+      # - "9092:9092"
+      # - "9101:9101"
+      - "9793:9793"
+      - "9794:9794"
+    env_file:
+      - ./envs/kafka-replica.common.env
+      - ./envs/broker-replica3.env  # Подключаем общие переменные
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "broker-replica3:39092", "--list"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    volumes:
+      - ./secrets/cluster-replica_server_jaas.conf:/etc/kafka/jaas/kafka_server_jaas.conf
+      - ./secrets/broker-replica3/creds:/etc/kafka/secrets
+    networks:
+      pnet:
+        ipv4_address: 192.168.0.113

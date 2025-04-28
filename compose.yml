@@ -1,20 +1,26 @@
 ---
-version: '3.8'
+# version: '3.8'
 include:
   - compose.kafka-main.yml
   # - compose.kafka-replica.yml
+  # - compose.hadoop.yml
+  # - compose.spark.yml
+  - compose.monitoring.yml
 services:
   connect:
-    image: confluentinc/cp-kafka-connect:7.0.1
+    image: confluentinc/cp-kafka-connect:7.7.1
     hostname: connect
     container_name: connect
     depends_on:
       - broker1
+      - broker2
+      - broker3
       - sr
     ports:
-      - "8083:8083"
+      - 8083:8083
+      - 9876:9876
     environment:
-      CONNECT_BOOTSTRAP_SERVERS: broker1:29092
+      CONNECT_BOOTSTRAP_SERVERS: broker1:29092,broker2:29092,broker3:29092
       CONNECT_REST_ADVERTISED_HOST_NAME: connect
       CONNECT_GROUP_ID: connect-group
       CONNECT_CONFIG_STORAGE_TOPIC: connect-configs
@@ -28,15 +34,24 @@ services:
       # CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
       CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://sr:8081
       CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components,/etc/kafka-connect/jars"
+      # Export JMX metrics to :9876/metrics for Prometheus
+      KAFKA_JMX_PORT: '9875'
+      KAFKA_OPTS: "-javaagent:/opt/jmx_prometheus_javaagent-0.15.0.jar=9876:/opt/kafka-connect.yml"
+      # Read connection password from file
+      # CONNECT_CONFIG_PROVIDERS: "file"
+
     volumes:
       - ./confluent-hub-components/:/etc/kafka-connect/jars
+      - ./confluent-hub-components/jmx_prometheus_javaagent-0.15.0.jar:/opt/jmx_prometheus_javaagent-0.15.0.jar
+      - ./configs/connect/:/opt/
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8083/connectors"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8083/connectors" ]
       interval: 5s
       timeout: 10s
       retries: 10
     networks:
       pnet:
+
 
   connectors-init:
     image: curlimages/curl:latest
@@ -62,72 +77,48 @@ services:
       "
     volumes:
       - ./connectors:/config
+    networks:
+      pnet:
+
 
   sr:
     image: confluentinc/cp-schema-registry:7.4.0
     hostname: sr
     container_name: sr
     depends_on:
-      - broker1
+      broker1:
+        condition: service_healthy
     ports:
-      - "8081:8081"
+      - 8081:8081
     environment:
       SCHEMA_REGISTRY_HOST_NAME: sr
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker1:29092'
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker1:29092,broker2:29092,broker3:29092'
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    networks:
+      pnet:
+
 
   elastic:
     image: elasticsearch:8.12.0
     container_name: elastic
     hostname: elastic
     ports:
-      - "9200:9200"
+      - 9200:9200
     depends_on:
       - broker1
-      - connect
+      # - connect
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1g -Xmx1g
       - xpack.security.enabled=false # Отключаем security для разработки
     volumes:
       - es_data:/usr/share/elasticsearch/data
-
-  ui:
-    image: provectuslabs/kafka-ui:v0.7.2
-    container_name: kafka-ui
-    hostname: ui
-    depends_on:
-      - broker1
-      # - broker2
-      - sr
-    ports:
-      - "8088:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: main_cluster 
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka.local:9994
-      KAFKA_CLUSTERS_0_SCHEMAREGISTRY_URL: "http://sr:8081"  # URL вашего Schema Registry
-
-      KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: "SASL_SSL"
-      KAFKA_CLUSTERS_0_PROPERTIES_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "" # Отключает проверку имени хоста
-
-      KAFKA_CLUSTERS_0_PROPERTIES_SSL_KEYSTORE_LOCATION: "/certs/keystore.jks"
-      KAFKA_CLUSTERS_0_PROPERTIES_SSL_KEYSTORE_PASSWORD: "clientpass"
-      KAFKA_CLUSTERS_0_PROPERTIES_SSL_TRUSTSTORE_LOCATION: "/certs/truststore.jks"
-      KAFKA_CLUSTERS_0_PROPERTIES_SSL_TRUSTSTORE_PASSWORD: "clienttrustpass"
-      KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: "PLAIN"
-      KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"admin\" password=\"admin-secret\";"
-      # - KAFKA_CLUSTERS_1_NAME=replica 
-      # - KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS=broker2:29093
-      # - KAFKA_CLUSTERS_1_SCHEMAREGISTRY_URL="http://sr:8081"  # URL вашего Schema Registry
-    volumes:
-      # - ./ca-cert.pem:/etc/kafka/ssl/ca-cert.pem
-
-      - ./secrets/ui-certs/client.truststore.jks:/certs/truststore.jks
-      - ./secrets/ui-certs/client.keystore.jks:/certs/keystore.jks
     networks:
       pnet:
 
+
 volumes:
   es_data:
+  grafana:
 
 

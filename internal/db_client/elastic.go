@@ -13,10 +13,10 @@ type ElasticClient struct {
 	es        *elasticsearch.Client
 }
 
-func NewElasticClient(conStr string) (*ElasticClient, error) {
+func NewElasticClient(conStr string, indexName string) (*ElasticClient, error) {
 
 	cfg := elasticsearch.Config{
-		Addresses: []string{conStr}, // URL вашего Elasticsearch
+		Addresses: []string{conStr},
 	}
 
 	es, err := elasticsearch.NewClient(cfg)
@@ -24,7 +24,7 @@ func NewElasticClient(conStr string) (*ElasticClient, error) {
 		return nil, fmt.Errorf("error connecting to Elasticsearch: %w", err)
 	}
 
-	res, err := es.Info() // Проверка подключения
+	res, err := es.Info()
 	if err != nil {
 		return nil, fmt.Errorf("error getting Elasticsearch info: %w", err)
 	}
@@ -32,7 +32,7 @@ func NewElasticClient(conStr string) (*ElasticClient, error) {
 
 	return &ElasticClient{
 		es:        es,
-		indexName: "products_out",
+		indexName: indexName,
 	}, nil
 }
 
@@ -47,7 +47,7 @@ func (c *ElasticClient) SearchByName(name string) ([]any, error) {
 	}
 
 	if err := json.NewEncoder(&buf).Encode(query); err != nil {
-		return nil, fmt.Errorf("Error encoding query: %w", err)
+		return nil, fmt.Errorf("error encoding query: %w", err)
 	}
 
 	res, err := c.es.Search(
@@ -56,14 +56,14 @@ func (c *ElasticClient) SearchByName(name string) ([]any, error) {
 		c.es.Search.WithPretty(),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("Error searching: %w", err)
+		return nil, fmt.Errorf("error searching: %w", err)
 	}
 	defer res.Body.Close()
 
 	// Чтение и парсинг результата
 	var result map[string]any
 	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("Error parsing response: %w", err)
+		return nil, fmt.Errorf("error parsing response: %w", err)
 	}
 
 	searchRes := make([]any, 0)

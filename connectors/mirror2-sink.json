@@ -2,13 +2,17 @@
 	"name": "mirror2",
 	"config": {
 		"connector.class": "org.apache.kafka.connect.mirror.MirrorSourceConnector",
+		"tasks.max": "3",
 		"source.cluster.alias": "source",
-		"topics": "user-actions",
-		"source.cluster.bootstrap.servers": "broker1:29092",
-		"target.cluster.bootstrap.servers": "broker2:29093",
-		"producer.override.bootstrap.servers": "broker2:29093",
-		"offset-syncs.topic.replication.factor": "1",
-		"value.converter": "org.apache.kafka.connect.json.JsonConverter",
-		"value.converter.schemas.enable": "false"
+		"target.cluster.alias": "target",
+		"topics": "user-actions,products,block-table",
+		"source.cluster.bootstrap.servers": "broker1:29092,broker2:29092,broker3:29092",
+		"target.cluster.bootstrap.servers": "broker-replica1:39092,broker-replica2:39092,broker-replica3:39092",
+		"producer.override.bootstrap.servers": "broker-replica1:39092,broker-replica2:39092,broker-replica3:39092",
+		"offset-syncs.topic.replication.factor": "2",
+		"key.converter": "org.apache.kafka.connect.converters.ByteArrayConverter",
+		"value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter",
+		"value.converter.schemas.enable": "false",
+		"sync.topic.acls.enabled": "false"
 	}
 }

@@ -1,7 +1,7 @@
 package registryclient
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde"
@@ -13,26 +13,31 @@ type SchemaRegistryClient struct {
 	Deserializer *jsonschema.Deserializer
 }
 
-func NewSchemaRegistryClient() *SchemaRegistryClient {
-	url := "http://0.0.0.0:8081"
+func NewSchemaRegistryClient(url string) (*SchemaRegistryClient, error) {
+
 	cfg := schemaregistry.NewConfig(url)
 
 	client, err := schemaregistry.NewClient(cfg)
 	if err != nil {
-		log.Fatalf("Failed to create schema registry client: %s\n", err)
+		return nil, fmt.Errorf("failed to create schema registry client: %w", err)
 	}
-	deser_config := jsonschema.NewDeserializerConfig()
-	deser, err := jsonschema.NewDeserializer(client, serde.ValueSerde, deser_config)
+
+	jsonDeserConf := jsonschema.NewDeserializerConfig()
+	jsonDeserConf.EnableValidation = true
+	deser, err := jsonschema.NewDeserializer(client, serde.ValueSerde, jsonDeserConf)
 	if err != nil {
-		log.Fatalf("Failed to create deserializer: %s\n", err)
+		return nil, fmt.Errorf("failed to create deserializer: %w", err)
 	}
-	serializer_config := jsonschema.NewSerializerConfig()
-	ser, err := jsonschema.NewSerializer(client, serde.ValueSerde, serializer_config)
+	jsonSerConf := jsonschema.NewSerializerConfig()
+	jsonSerConf.AutoRegisterSchemas = false
+	jsonSerConf.EnableValidation = true
+
+	ser, err := jsonschema.NewSerializer(client, serde.ValueSerde, jsonSerConf)
 	if err != nil {
-		log.Fatalf("Failed to create serializer: %s\n", err)
+		return nil, fmt.Errorf("failed to create serializer: %w", err)
 	}
 	return &SchemaRegistryClient{
 		Serializer:   ser,
 		Deserializer: deser,
-	}
+	}, nil
 }

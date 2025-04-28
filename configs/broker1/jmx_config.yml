@@ -1,0 +1,22 @@
+---
+lowercaseOutputName: true
+rules:
+  # Базовые метрики брокера
+  - pattern: 'kafka.server<type=BrokerTopicMetrics, name=(\\w+)><>Count'
+    name: 'kafka_broker_$1_total'
+  - pattern: 'kafka.server<type=BrokerTopicMetrics, name=(\\w+)><>OneMinuteRate'
+    name: 'kafka_broker_$1_rate'
+  # Метрики репликации
+  - pattern: 'kafka.server<type=ReplicaManager, name=(\\w+)><>Value'
+    name: 'kafka_replica_$1'
+  # Метрики запросов (исправлено экранирование \w)
+  - pattern: 'kafka.network<type=RequestMetrics, name=(\\w+), request=(\\w+)><>(\\w+)'
+    name: 'kafka_request_$1_$2_$3'
+  # Метрики лога (размер, смещения)
+  - pattern: 'kafka.log<type=Log, name=(\\w+), topic=(\\w+), partition=(\\d+)><>(\\w+)'
+    name: 'kafka_log_$1'
+    labels:
+      topic: '$2'
+      partition: '$3'
+
+jmxUrl: 'service:jmx:rmi:///jndi/rmi://broker1:9911/jmxrmi'

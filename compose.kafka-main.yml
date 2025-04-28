@@ -4,57 +4,119 @@ services:
     hostname: zookeeper
     container_name: zookeeper
     ports:
-      - "2181:2181"
+      - 2181:2181
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-      ZOOKEEPER_REQUIRE_CLIENT_AUTH_SCHEME: "sasl"
+      ZOOKEEPER_REQUIRE_CLIENT_AUTH_SCHEME: sasl
       ZOOKEEPER_AUTH_PROVIDER_1: "org.apache.zookeeper.server.auth.SASLAuthenticationProvider"
-      ZOOKEEPER_SASL_ENABLED: "true"
+      ZOOKEEPER_SASL_ENABLED: true
       KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/zookeeper/zookeeper_server_jaas.conf"
-
     volumes:
       - ./secrets/zookeeper/zookeeper_server_jaas.conf:/etc/zookeeper/zookeeper_server_jaas.conf
-
     networks:
       pnet:
 
+
   broker1:
     image: confluentinc/cp-server:7.4.0
-    hostname: kafka.local
+    hostname: b1.kafka.local
     container_name: broker1
     depends_on:
       - zookeeper
     ports:
-      - "9092:9092"
-      - "9101:9101"
-      - "9993:9993"
-      - "9994:9994"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:SSL,SASL_SSL:SASL_SSL
-      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9993,SASL_SSL://:9994
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://broker1:29092,EXTERNAL://kafka.local:9993,SASL_SSL://kafka.local:9994
+      # - "9101:9101"
+      - "9193:9193"
+      - "9194:9194"
+
     env_file:
-      - env.broker  # Подключаем общие переменные
+      - ./envs/kafka.common.env
+      - ./envs/broker1.env # Подключаем общие переменные
+
     healthcheck:
-      test: ["CMD", "kafka-topics", "--bootstrap-server", "broker1:29092", "--list"]
+      test: [ "CMD", "kafka-topics", "--bootstrap-server", "broker1:29092", "--list" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    volumes:
+      - ./secrets/cluster-main_server_jaas.conf:/etc/kafka/jaas/kafka_server_jaas.conf
+      - ./secrets/broker1/client.properties:/tmp/client.conf
+      - ./secrets/broker1/creds:/etc/kafka/secrets
+    networks:
+      pnet:
+        ipv4_address: 192.168.0.101
+
+  broker2:
+    image: confluentinc/cp-server:7.4.0
+    hostname: b2.kafka.local
+    container_name: broker2
+    depends_on:
+      - zookeeper
+      - broker1
+    ports:
+      # - "9092:9092"
+      # - "9101:9101"
+      - "9293:9293"
+      - "9294:9294"
+      - 9912:9912
+    env_file:
+      - ./envs/kafka.common.env
+      - ./envs/broker2.env # Подключаем общие переменные
+      # environment:
+      # KAFKA_JMX_OPTS: >-
+      #   -Dcom.sun.management.jmxremote
+      #   -Dcom.sun.management.jmxremote.port=9912
+      #   -Dcom.sun.management.jmxremote.rmi.port=9912
+      #   -Dcom.sun.management.jmxremote.authenticate=false
+      #   -Dcom.sun.management.jmxremote.ssl=false
+      #   -Djava.rmi.server.hostname=broker2=value
+    healthcheck:
+      test: [ "CMD", "kafka-topics", "--bootstrap-server", "broker2:29092", "--list" ]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - ./secrets/cluster-main_server_jaas.conf:/etc/kafka/jaas/kafka_server_jaas.conf
+      - ./secrets/broker2/creds:/etc/kafka/secrets
+    networks:
+      pnet:
+        ipv4_address: 192.168.0.102
+
+  broker3:
+    image: confluentinc/cp-server:7.4.0
+    hostname: b3.kafka.local
+    container_name: broker3
+    depends_on:
+      - zookeeper
+      - broker1
+    ports:
+      # - "9092:9092"
+      # - "9101:9101"
+      - "9393:9393"
+      - "9394:9394"
+      - 9913:9913
+    env_file:
+      - ./envs/kafka.common.env
+      - ./envs/broker3.env # Подключаем общие переменные
+    # environment:
+    #     KAFKA_JMX_OPTS: >-
+    #       -Dcom.sun.management.jmxremote
+    #       -Dcom.sun.management.jmxremote.port=9913
+    #       -Dcom.sun.management.jmxremote.rmi.port=9913
+    #       -Dcom.sun.management.jmxremote.authenticate=false
+    #       -Dcom.sun.management.jmxremote.ssl=false
+    #       -Djava.rmi.server.hostname=broker3=value
+    healthcheck:
+      test: [ "CMD", "kafka-topics", "--bootstrap-server", "broker3:29092", "--list" ]
       interval: 5s
       timeout: 10s
       retries: 10
     volumes:
-      - ./secrets/broker1:/etc/kafka/jaas
-      - ./secrets/broker1/kafka.server.truststore.jks:/etc/kafka/secrets/kafka.server.truststore.jks
-      - ./secrets/broker1/kafka.server.keystore.jks:/etc/kafka/secrets/kafka.server.keystore.jks
-      - ./secrets/broker1/ssl_key_credentials:/etc/kafka/secrets/ssl_key_credentials
-      - ./secrets/broker1/ssl_keystore_credentials:/etc/kafka/secrets/ssl_keystore_credentials
-      - ./secrets/broker1/ssl_truststore_credentials:/etc/kafka/secrets/ssl_truststore_credentials
-      - .//secrets/broker1/client.properties:/tmp/client.conf
+      - ./secrets/cluster-main_server_jaas.conf:/etc/kafka/jaas/kafka_server_jaas.conf
+      - ./secrets/broker3/creds:/etc/kafka/secrets
     networks:
       pnet:
-        ipv4_address: 192.168.0.100
-
+        ipv4_address: 192.168.0.103
 
   topics-init:
     image: confluentinc/cp-kafka:7.4.0
@@ -68,7 +130,7 @@ services:
     command: >
       bash -c "
         echo 'Waiting for Kafka to be ready...';
-        sleep 5;
+        sleep 15;
         
         # Создаем топики
         kafka-topics --bootstrap-server broker1:29092 --create --if-not-exists --topic products_in --partitions 1 --replication-factor 1;
@@ -76,11 +138,12 @@ services:
 
         kafka-topics --bootstrap-server broker1:29092 --create --if-not-exists --topic block --partitions 1 --replication-factor 1;
         kafka-topics --bootstrap-server broker1:29092 --create --if-not-exists --topic block-table --partitions 1 --replication-factor 1 --config cleanup.policy=compact;
-        kafka-topics --bootstrap-server broker1:29092 --create --if-not-exists --topic user-actions --partitions 1 --replication-factor 1;
+        kafka-topics --bootstrap-server broker1:29092 --create --if-not-exists --topic user-actions --partitions 3 --replication-factor 2;
 
         echo 'Topics created successfully!';
         exit 0;
       "
+
 networks:
   pnet:
     driver: bridge

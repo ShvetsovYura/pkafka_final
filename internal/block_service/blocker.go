@@ -5,10 +5,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"log"
+	"log/slog"
 	"os"
 	"sync"
 
 	"github.com/IBM/sarama"
+	"github.com/ShvetsovYura/pkafka_final/internal/types"
 	"github.com/lovoo/goka"
 	"github.com/lovoo/goka/codec"
 )
@@ -17,102 +19,158 @@ type Blocker struct {
 	brokers            []string
 	blockerStream      goka.Stream
 	blockerGroup       goka.Group
-	blockCh            chan *BlockItem
 	productInStream    goka.Stream
 	productOutStream   goka.Stream
 	productFilterGroup goka.Group
+	connectionConfig   *sarama.Config
+	productCodec       productCodec
 }
 
-func NewBlocker(topic string, brokers []string, blockCh chan *BlockItem, productInTopic string, productOutTopic string) *Blocker {
-	return &Blocker{
-		brokers:            brokers,
-		blockerStream:      goka.Stream(topic),
-		blockerGroup:       goka.Group(topic),
-		productInStream:    goka.Stream(productInTopic),
-		productOutStream:   goka.Stream(productOutTopic),
-		productFilterGroup: "product_filter",
-	}
-}
+// type productCodec struct {
+// 	srClient  *registryclient.SchemaRegistryClient
+// 	topicName string
+// }
 
-func (b *Blocker) Run(ctx context.Context, wg *sync.WaitGroup) {
-	wg.Add(1)
-	go b.startEmmiter()
-	go b.startProcessor()
-	go b.startFilter()
+// func (p *productCodec) Encode(value any) ([]byte, error) {
+// 	return p.srClient.Serializer.Serialize(p.topicName, value)
+// }
+// func (p *productCodec) Decode(data []byte) (any, error) {
+// 	// КОСТЫЛЬ!!! Я ХЗ КАК СЮДА ПРИКРУТИТЬ SCHEMA REGISTRY - ВЕСЬ мозг изломал
+// 	js := data[5:] // срезаем 5 байт, которые идентифицируют схему
+// 	var prod models.Product
+// 	err := json.Unmarshal(js, &prod)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-}
+// 	// res, err := p.srClient.Deserializer.Deserialize(p.topicName, data)) <- не работает чертова бабина
+// 	return prod, err
+// }
 
-func (b *Blocker) startEmmiter() {
-	caCert, err := os.ReadFile("ca-cert.pem")
+func NewBlocker(brokers []string, topics types.BlockerTopics, cert types.ClientCert, user types.Cred) *Blocker {
+
+	caCert, err := os.ReadFile(cert.CaCertPath)
 	if err != nil {
 		panic(err)
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
-	// 2. Загрузка клиентского сертификата и ключа (если нужно)
-	cert, err := tls.LoadX509KeyPair("client-cert-signed.pem", "client-key.pem")
+	tlsCert, err := tls.LoadX509KeyPair(cert.ClientCertPath, cert.ClientCertKeyPath)
 	if err != nil {
 		panic(err)
 	}
-	// 3. Настройка TLS
-	tlsConfig := &tls.Config{
-		RootCAs:      caCertPool,              // CA для проверки сервера
-		Certificates: []tls.Certificate{cert}, // Клиентский сертификат (для mTLS)
-		MinVersion:   tls.VersionTLS11,        // Минимальная версия TLS
-	}
-	c := goka.DefaultConfig()
-	c.Net.TLS.Enable = true
-	c.Net.TLS.Config = tlsConfig
 
-	c.Net.SASL.Enable = true
-	c.Net.SASL.Mechanism = sarama.SASLTypePlaintext
-	c.Net.SASL.User = "admin"
-	c.Net.SASL.Password = "admin-secret"
-	// c.Net.TLS.Config.Certificates =
-	e, err := goka.NewEmitter(b.brokers, b.blockerStream, new(codec.String), goka.WithEmitterProducerBuilder(goka.ProducerBuilderWithConfig(c)))
+	tlsConfig := &tls.Config{
+		RootCAs:      caCertPool,
+		Certificates: []tls.Certificate{tlsCert},
+		MinVersion:   tls.VersionTLS12,
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+	}
+	config := goka.DefaultConfig()
+	config.Net.TLS.Enable = true
+	config.Net.TLS.Config = tlsConfig
+
+	config.Net.SASL.Enable = true
+	config.Net.SASL.Mechanism = sarama.SASLTypePlaintext
+	config.Net.SASL.User = user.Username
+	config.Net.SASL.Password = user.Password
+
+	return &Blocker{
+		brokers:            brokers,
+		blockerStream:      goka.Stream(topics.BlockerTopic),
+		blockerGroup:       goka.Group(topics.BlockerTopic),
+		productInStream:    goka.Stream(topics.InTopic),
+		productOutStream:   goka.Stream(topics.OutTopic),
+		productFilterGroup: "product_filter",
+		connectionConfig:   config,
+		productCodec: productCodec{
+			srClient:  schemaRegistryClient,
+			topicName: topics.InTopic,
+		},
+	}
+}
+
+func (b *Blocker) Run(ctx context.Context, wg *sync.WaitGroup, blockCh chan *types.BlockItem) {
+	go b.startEmmiter(ctx, wg, blockCh)
+	go b.startProcessor(ctx)
+	go b.startFilter(ctx)
+}
+
+func (b *Blocker) startEmmiter(ctx context.Context, wg *sync.WaitGroup, blockCh chan *types.BlockItem) {
+
+	e, err := goka.NewEmitter(b.brokers, b.blockerStream, new(codec.String),
+		goka.WithEmitterProducerBuilder(goka.ProducerBuilderWithConfig(b.connectionConfig)),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
+	slog.Info("blocker emmiter started")
 	defer e.Finish()
-	item := <-b.blockCh
-	e.EmitSync(item.productId, item.status)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			wg.Done()
+			return
+		case item := <-blockCh:
+			slog.Info("incoming blockCh to block/unblock", slog.Any("item", item))
+			e.EmitSync(item.ProductId, item.Status)
+		}
+	}
 }
 
-func (b *Blocker) startProcessor() {
+func (b *Blocker) startProcessor(ctx context.Context) {
 	group := goka.DefineGroup(b.blockerGroup,
 		goka.Input(b.blockerStream, new(codec.String), func(ctx goka.Context, msg any) {
 			// k := ctx.Key()
 			ctx.SetValue(msg)
 		}),
 		goka.Persist(new(codec.String)))
-	p, err := goka.NewProcessor(b.brokers, group)
+
+	p, err := goka.NewProcessor(b.brokers, group,
+		goka.WithConsumerSaramaBuilder(goka.SaramaConsumerBuilderWithConfig(b.connectionConfig)),
+		goka.WithConsumerGroupBuilder(goka.ConsumerGroupBuilderWithConfig(b.connectionConfig)),
+		goka.WithProducerBuilder(goka.ProducerBuilderWithConfig(b.connectionConfig)),
+		goka.WithTopicManagerBuilder(goka.TopicManagerBuilderWithConfig(b.connectionConfig, goka.NewTopicManagerConfig())),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
-	p.Run(context.TODO())
+	err = p.Run(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
-func (b *Blocker) startFilter() {
+func (b *Blocker) startFilter(ctx context.Context) {
 	group := goka.DefineGroup(b.productFilterGroup,
 		goka.Input(b.productInStream, new(codec.String), func(ctx goka.Context, msg any) {
 			v := ctx.Join(goka.Table(b.blockerGroup))
-			if v != nil && v.(string) == "lock" {
-				println("locked")
-				return
 
+			if v != nil && v.(string) == "blocked" {
+				slog.Info("product blocked", slog.String("productID", ctx.Key()))
+				return
 			}
 			ctx.Emit(b.productOutStream, ctx.Key(), msg)
 		}),
 		goka.Output(b.productOutStream, new(codec.String)),
 		goka.Join(goka.Table(b.blockerGroup), new(codec.String)))
 
-	p, err := goka.NewProcessor(b.brokers, group)
+	p, err := goka.NewProcessor(b.brokers, group,
+		goka.WithConsumerSaramaBuilder(goka.SaramaConsumerBuilderWithConfig(b.connectionConfig)),
+		goka.WithConsumerGroupBuilder(goka.ConsumerGroupBuilderWithConfig(b.connectionConfig)),
+		goka.WithProducerBuilder(goka.ProducerBuilderWithConfig(b.connectionConfig)),
+		goka.WithTopicManagerBuilder(goka.TopicManagerBuilderWithConfig(b.connectionConfig, goka.NewTopicManagerConfig())),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	e := p.Run(context.TODO())
+	e := p.Run(ctx)
 	if e != nil {
 		log.Fatal(e)
 	}
