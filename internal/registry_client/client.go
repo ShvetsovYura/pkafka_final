@@ -14,7 +14,6 @@ type SchemaRegistryClient struct {
 }
 
 func NewSchemaRegistryClient(url string) (*SchemaRegistryClient, error) {
-
 	cfg := schemaregistry.NewConfig(url)
 
 	client, err := schemaregistry.NewClient(cfg)

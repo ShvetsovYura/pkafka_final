@@ -1,15 +1,37 @@
 package main
 
 import (
+	"context"
+	"log"
+	"os"
 	"sync"
 
 	analytics "github.com/ShvetsovYura/pkafka_final/internal/analytics"
+	"github.com/ShvetsovYura/pkafka_final/internal/types"
+	"gopkg.in/yaml.v2"
 )
 
 func main() {
-	var wg = sync.WaitGroup{}
+	data, err := os.ReadFile("config.yaml")
+	if err != nil {
+		log.Fatalf("Failed to read config file: %v", err)
+	}
+
+	var cfg types.AndlyticsAppConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		log.Fatalf("Failed to parse config: %v", err)
+	}
+	hadoopClient, err := analytics.NewHadoopClient(cfg.Hadoop)
+	if err != nil {
+		log.Fatal("Not create hadoop client, %s", err)
+	}
+	consumer, err := analytics.NewAnalyticsConsumer("hadoop-topic", cfg.Consumer, hadoopClient)
+	if err != nil {
+		log.Fatal("Not create analytics consumer, %s", err)
+	}
+	var wg sync.WaitGroup
 	wg.Add(1)
-	go analytics.RunSyncConsumer()
+	go consumer.Run(context.TODO(), &wg)
 	go analytics.RunCalc()
 	go analytics.RunRecomendationProducer()
 	wg.Wait()

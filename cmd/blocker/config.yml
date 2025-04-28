@@ -1,0 +1,19 @@
+bootstrap_servers: 
+  - "b1.kafka.local:9194"
+  - "b2.kafka.local:9294"
+  -  "b3.kafka.local:9394"
+topics:
+  blocker_topic: block
+  in_topic: procucts_in
+  out_topic: products
+certs:
+  ca_cert_location: ''
+  client_cert_locatoin: ''
+  client_cert_key_location: ''
+cred:
+  username: kafka-internal
+  password: H6tFPQDI9Wnu
+webapi:
+  listen: ':9091'
+common:
+  queue_size: 10

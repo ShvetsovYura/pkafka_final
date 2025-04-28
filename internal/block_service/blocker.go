@@ -23,7 +23,7 @@ type Blocker struct {
 	productOutStream   goka.Stream
 	productFilterGroup goka.Group
 	connectionConfig   *sarama.Config
-	productCodec       productCodec
+	// productCodec       productCodec
 }
 
 // type productCodec struct {
@@ -47,16 +47,16 @@ type Blocker struct {
 // 	return prod, err
 // }
 
-func NewBlocker(brokers []string, topics types.BlockerTopics, cert types.ClientCert, user types.Cred) *Blocker {
+func NewBlocker(brokers []string, topics types.BlockerTopics, cert types.Certs, user types.Cred) *Blocker {
 
-	caCert, err := os.ReadFile(cert.CaCertPath)
+	caCert, err := os.ReadFile(cert.CaCertLocation)
 	if err != nil {
 		panic(err)
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
-	tlsCert, err := tls.LoadX509KeyPair(cert.ClientCertPath, cert.ClientCertKeyPath)
+	tlsCert, err := tls.LoadX509KeyPair(cert.CertLocation, cert.CertKeyLocation)
 	if err != nil {
 		panic(err)
 	}
@@ -84,20 +84,14 @@ func NewBlocker(brokers []string, topics types.BlockerTopics, cert types.ClientC
 		productOutStream:   goka.Stream(topics.OutTopic),
 		productFilterGroup: "product_filter",
 		connectionConfig:   config,
-		productCodec: productCodec{
-			srClient:  schemaRegistryClient,
-			topicName: topics.InTopic,
-		},
+		// 	productCodec: productCodec{
+		// 		srClient:  schemaRegistryClient,
+		// 		topicName: topics.InTopic,
+		// 	},
 	}
 }
 
-func (b *Blocker) Run(ctx context.Context, wg *sync.WaitGroup, blockCh chan *types.BlockItem) {
-	go b.startEmmiter(ctx, wg, blockCh)
-	go b.startProcessor(ctx)
-	go b.startFilter(ctx)
-}
-
-func (b *Blocker) startEmmiter(ctx context.Context, wg *sync.WaitGroup, blockCh chan *types.BlockItem) {
+func (b *Blocker) RunEmmiter(ctx context.Context, wg *sync.WaitGroup, blockCh chan *types.BlockItem) {
 
 	e, err := goka.NewEmitter(b.brokers, b.blockerStream, new(codec.String),
 		goka.WithEmitterProducerBuilder(goka.ProducerBuilderWithConfig(b.connectionConfig)),
@@ -123,7 +117,7 @@ func (b *Blocker) startEmmiter(ctx context.Context, wg *sync.WaitGroup, blockCh 
 	}
 }
 
-func (b *Blocker) startProcessor(ctx context.Context) {
+func (b *Blocker) RunProcessor(ctx context.Context) {
 	group := goka.DefineGroup(b.blockerGroup,
 		goka.Input(b.blockerStream, new(codec.String), func(ctx goka.Context, msg any) {
 			// k := ctx.Key()
@@ -146,7 +140,7 @@ func (b *Blocker) startProcessor(ctx context.Context) {
 	}
 }
 
-func (b *Blocker) startFilter(ctx context.Context) {
+func (b *Blocker) RunFilter(ctx context.Context) {
 	group := goka.DefineGroup(b.productFilterGroup,
 		goka.Input(b.productInStream, new(codec.String), func(ctx goka.Context, msg any) {
 			v := ctx.Join(goka.Table(b.blockerGroup))

@@ -14,4 +14,4 @@ schema_registry:
 webapi:
   listen: ":9082"
 common:
-  max_queue: 100
+  queue_size: 100
