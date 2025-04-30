@@ -14,12 +14,12 @@ import (
 )
 
 type AnalyticsConsumer struct {
-	hadoopClient *HadoopClient
-	consumer     *kafka.Consumer
-	topic        string
+	hdfsClient *HDFSClient
+	consumer   *kafka.Consumer
+	topic      string
 }
 
-func NewAnalyticsConsumer(topic string, config types.ConsumerConfig, hadoopCLient *HadoopClient) (*AnalyticsConsumer, error) {
+func NewAnalyticsConsumer(topic string, config types.ConsumerConfig, hdfsClient *HDFSClient) (*AnalyticsConsumer, error) {
 	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":                   config.BootstrapServers,
 		"group.id":                            config.GroupID,
@@ -40,9 +40,9 @@ func NewAnalyticsConsumer(topic string, config types.ConsumerConfig, hadoopCLien
 		return nil, fmt.Errorf("failed to create consumer: %s", err)
 	}
 	return &AnalyticsConsumer{
-		topic:        topic,
-		hadoopClient: hadoopCLient,
-		consumer:     consumer,
+		topic:      topic,
+		hdfsClient: hdfsClient,
+		consumer:   consumer,
 	}, nil
 }
 
@@ -63,7 +63,7 @@ func (c *AnalyticsConsumer) Run(ctx context.Context, wg *sync.WaitGroup) error {
 		if err == nil {
 			value := string(msg.Value)
 			fmt.Printf("Received message: value=%s, partition=%v\n", value, msg.TopicPartition)
-			err = c.hadoopClient.Write(string(msg.Key), value)
+			err = c.hdfsClient.Write(string(msg.Key), value)
 			if err != nil {
 				slog.Error("error on handle msg", slog.Any("error", err))
 				continue

@@ -21,18 +21,18 @@ func main() {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		log.Fatalf("Failed to parse config: %v", err)
 	}
-	hadoopClient, err := analytics.NewHadoopClient(cfg.Hadoop)
+	hdfsClient, err := analytics.NewHDFSClient(cfg.HDFS)
 	if err != nil {
-		log.Fatal("Not create hadoop client, %s", err)
+		log.Fatal("not create hadoop client, %s", err)
 	}
-	consumer, err := analytics.NewAnalyticsConsumer("hadoop-topic", cfg.Consumer, hadoopClient)
+	consumer, err := analytics.NewAnalyticsConsumer("hadoop-topic", cfg.Consumer, hdfsClient)
 	if err != nil {
-		log.Fatal("Not create analytics consumer, %s", err)
+		log.Fatal("not create analytics consumer, %s", err)
 	}
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go consumer.Run(context.TODO(), &wg)
-	go analytics.RunCalc()
+	// go analytics.RunCalc()
 	go analytics.RunRecomendationProducer()
 	wg.Wait()
 }

@@ -66,7 +66,7 @@ type ElasticClientConfig struct {
 	IndexName string `yaml:"index_name" json:"index_name"`
 }
 
-type HadoopClientConfig struct {
+type HDFSClientConfig struct {
 	Addresses           []string `yaml:"addresses" json:"addresses"`
 	User                string   `yaml:"user" json:"user"`
 	UseDatanodeHostname bool     `yaml:"used_datanode_hostname" json:"used_datanode_hostname"`
@@ -97,6 +97,6 @@ type ClientAppConfig struct {
 }
 
 type AndlyticsAppConfig struct {
-	Hadoop   HadoopClientConfig `yaml:"hadoop" json:"hadoop"`
-	Consumer ConsumerConfig     `yaml:"consumer" json:"consumer"`
+	HDFS     HDFSClientConfig `yaml:"hdfs" json:"hdfs"`
+	Consumer ConsumerConfig   `yaml:"consumer" json:"consumer"`
 }

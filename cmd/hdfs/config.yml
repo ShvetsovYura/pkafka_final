@@ -1,0 +1,5 @@
+hdfs:
+  addresses: 
+    - localhost:9000
+  user: root
+  used_datanode_hostname: true

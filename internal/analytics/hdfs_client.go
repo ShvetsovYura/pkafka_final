@@ -8,14 +8,15 @@ import (
 
 	"github.com/ShvetsovYura/pkafka_final/internal/types"
 	"github.com/colinmarc/hdfs/v2"
+	"github.com/google/uuid"
 )
 
-type HadoopClient struct {
+type HDFSClient struct {
 	hc      *hdfs.Client
 	dataDir string
 }
 
-func NewHadoopClient(config types.HadoopClientConfig) (*HadoopClient, error) {
+func NewHDFSClient(config types.HDFSClientConfig) (*HDFSClient, error) {
 	// Initialize HDFS client with custom dial function
 	dialFunc := (&net.Dialer{
 		Timeout:   60 * time.Second,
@@ -34,42 +35,46 @@ func NewHadoopClient(config types.HadoopClientConfig) (*HadoopClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HDFS client: %w", err)
 	}
-	return &HadoopClient{
+	return &HDFSClient{
 		hc:      hdfsClient,
 		dataDir: "/data",
 	}, nil
 
 }
 
-func (h *HadoopClient) MakeDirs() error {
-	if err := h.hc.MkdirAll(h.dataDir, 0755); err != nil {
+func (h *HDFSClient) MakeDirs(path string) error {
+	if err := h.hc.MkdirAll(path, 0755); err != nil {
 		return fmt.Errorf("failed to create directory %w", err)
 	}
 	return nil
 }
 
-func (h *HadoopClient) Write(userID string, value string) error {
+func (h *HDFSClient) Write(userID string, value string) error {
 	// Retry logic for HDFS write
 	var writer *hdfs.FileWriter
+	// err := h.MakeDirs(fmt.Sprintf("/data/%s", userID))
+	// if err != nil {
+	// 	return err
+	// }
+	h.MakeDirs(fmt.Sprintf("%s/%s", h.dataDir, userID))
 
-	hdfsFile := fmt.Sprintf("/data/message_%s", userID)
-
+	// hdfsFile := fmt.Sprintf("/data/%s/%s", userID, uuid.New())
+	// hdfsFile := fmt.Sprintf("/data/%s", uuid.New())
+	hdfsFile := fmt.Sprintf("%s/%s/%s", h.dataDir, userID, uuid.New())
 	writer, err := h.hc.Create(hdfsFile)
 	if err != nil {
 		return fmt.Errorf("failed to create HDFS file: %w", err)
 	}
 	defer func() {
-		writer.Close()
+		err = writer.Close()
+		if err != nil {
+			slog.Error("failed to close HDFS file", slog.Any("error", err))
+		}
 	}()
 
 	_, err = writer.Write([]byte(value + "\n"))
 	if err != nil {
 		return fmt.Errorf("failed to write to HDFS file: %w", err)
-	}
-
-	err = writer.Close()
-	if err != nil {
-		return fmt.Errorf("failed to close HDFS file: %w", err)
 	}
 
 	slog.Info("Message written to HDFS", slog.String("content", value), slog.String("path", hdfsFile))
