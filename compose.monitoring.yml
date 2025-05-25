@@ -1,0 +1,128 @@
+services:
+
+  # kafka-exporter:
+  #   image: danielqsj/kafka-exporter:latest
+  #   container_name: kafka-exporter
+  #   depends_on:
+  #     - broker1
+  #   command:
+  #     - --kafka.server=broker1:29092
+  #     - --web.listen-address=:9308
+  #     - --web.telemetry-path=/metrics
+  #   networks:
+  #     pnet:
+
+
+  # jmx-broker1:
+  #   image: sscaling/jmx-prometheus-exporter:latest
+  #   container_name: jmx-broker1
+  #   hostname: jmx-broker1
+  #   ports:
+  #     - 5511:5556
+  #   volumes:
+  #     - ./configs/broker1/jmx_config.yml:/etc/jmx_exporter/config.yml
+  #   environment:
+  #     CONFIG_YML: "/etc/jmx_exporter/config.yml"
+  #     JVM_OPTS: "-Xmx128m"
+  #   depends_on:
+  #     - broker1
+  #   networks:
+  #     pnet:
+
+  ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: kafka-ui
+    hostname: ui
+    depends_on:
+      - broker1
+      # - broker2
+      - sr
+    ports:
+      - "8088:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: main_cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker1:29092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY_URL: "http://sr:8081"
+
+      # KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: "SASL_SSL"
+      # KAFKA_CLUSTERS_0_PROPERTIES_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "" # Отключает проверку имени хоста
+
+      # KAFKA_CLUSTERS_0_PROPERTIES_SSL_KEYSTORE_LOCATION: "/certs/keystore.jks"
+      # KAFKA_CLUSTERS_0_PROPERTIES_SSL_KEYSTORE_PASSWORD: "clientpass"
+      # KAFKA_CLUSTERS_0_PROPERTIES_SSL_TRUSTSTORE_LOCATION: "/certs/truststore.jks"
+      # KAFKA_CLUSTERS_0_PROPERTIES_SSL_TRUSTSTORE_PASSWORD: "clienttrustpass"
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: "PLAIN"
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"kafka-internal\" password=\"H6tFPQDI9Wnu\";"
+
+      KAFKA_CLUSTERS_1_NAME: replica
+      KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS: broker-replica1:39092,broker-replica2:39092,broker-replica3:39092
+      KAFKA_CLUSTERS_1_SCHEMAREGISTRY_URL: "http://sr:8081"
+      KAFKA_CLUSTERS_1_PROPERTIES_SASL_MECHANISM: PLAIN
+      KAFKA_CLUSTERS_1_PROPERTIES_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"kafka-internal\" password=\"edTxpXFGT7vi\";"
+    networks:
+      pnet:
+
+
+  prometheus:
+    image: prom/prometheus:v2.30.3
+    container_name: prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./configs/prometheus:/etc/prometheus
+    command: --web.enable-lifecycle --config.file=/etc/prometheus/prometheus.yml
+    # depends_on:
+      # - connect
+      # - jmx-broker1
+      # - jmx-broker2
+      # - jmx-broker3
+    networks:
+      pnet:
+
+
+  grafana:
+    image: grafana/grafana:8.1.6
+    container_name: grafana
+    ports:
+      - 3000:3000
+    volumes:
+      - ./configs/grafana/config.ini:/etc/grafana/config.ini
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards
+
+    networks:
+      pnet:
+
+        # jmx-broker2:
+        #   image: sscaling/jmx-prometheus-exporter:latest
+        #   container_name: jmx-broker2
+        #   hostname: jmx-broker2
+        #   ports:
+        #     - 5512:5556
+        #   volumes:
+        #     - ./configs/broker2/jmx_config.yml:/etc/jmx_exporter/config.yml
+        #   environment:
+        #     CONFIG_YML: "/etc/jmx_exporter/config.yml"
+        #     JVM_OPTS: "-Xmx128m"
+        #   depends_on:
+        #     - broker2
+        #   networks:
+        #     pnet:
+
+
+        # jmx-broker3:
+        # image: sscaling/jmx-prometheus-exporter:latest
+        # container_name: jmx-broker3
+        # hostname: jmx-broker3
+        # ports:
+        #   - 5513:5556
+        # volumes:
+        #   - ./configs/broker3/jmx_config.yml:/etc/jmx_exporter/config.yml
+        # environment:
+        #   CONFIG_YML: "/etc/jmx_exporter/config.yml"
+        #   JVM_OPTS: "-Xmx128m"
+        # depends_on:
+        #   - broker3
+        # networks:
+        #   pnet:
+

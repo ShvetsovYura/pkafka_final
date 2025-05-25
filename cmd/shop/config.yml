@@ -1,0 +1,17 @@
+producer:
+  bootstrap_servers: "b1.kafka.local:9194,b2.kafka.local:9294,b3.kafka.local:9394"
+  security_protocol: SASL_SSL
+  ca_cert_location: 'ca.crt'
+  cert_location: 'client.pem'
+  cert_key_location: 'client.key'
+  sasl_mechanism: PLAIN
+  sasl_username: kafka-internal
+  sasl_password: "H6tFPQDI9Wnu"
+  acks: all
+  enable_cert_verify: true
+schema_registry:
+  url: "http://:8081"
+webapi:
+  listen: ":9082"
+common:
+  queue_size: 100

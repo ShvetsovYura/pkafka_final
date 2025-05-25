@@ -1,0 +1,13 @@
+{
+    "name": "hdfs-sink",
+    "config": {
+        "connector.class": "io.confluent.connect.hdfs.HdfsSinkConnector",
+        "tasks.max": "1",
+        "topics": "test-topic",
+        "hdfs.url": "hdfs://namenode:9000",
+        "hadoop.conf.dir": "/etc/hadoop/conf",
+        "format.class": "io.confluent.connect.hdfs.json.JsonFormat",
+        "flush.size": "1000",
+        "logs.dir": "/data/kafka"
+    }
+}

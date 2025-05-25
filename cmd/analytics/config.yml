@@ -1,0 +1,23 @@
+hadoop:
+  addreses: 
+    - localhost:9000
+  user: root
+  used_datanode_hostname: true
+spark:
+  connection_string: "sc://localhost:15002"
+  source: parquet
+consumer:
+  bootstrap_servers: ""
+  security_protocol: SASL_SSL
+  ca_cert_location: ''
+  cert_location: ''
+  cert_key_location: ''
+  sals_mechanism: PLAIN
+  sasl_username: kafka-internal
+  sals_password: "H6tFPQDI9Wnu"
+  enable_cert_verify: true
+  client_id: 'client'
+  auto_offset_reset: earliest
+  enable_autocommit: true
+  session_timeout_ms: 6000
+  group_id: 'analitycs_group'
