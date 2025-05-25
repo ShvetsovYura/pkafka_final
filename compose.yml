@@ -3,7 +3,7 @@
 include:
   - compose.kafka-main.yml
   - compose.kafka-replica.yml
-  # - compose.analytics.yml
+  - compose.analytics.yml
   - compose.monitoring.yml
 services:
   connect:
@@ -115,6 +115,16 @@ services:
     networks:
       pnet:
 
+  redis:
+    image: redis:7-alpine
+    container_name: rcache
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --save 60 1 --loglevel warning
+
 
 networks:
   pnet:
@@ -126,5 +136,6 @@ networks:
 volumes:
   es_data:
   grafana:
+  redis_data:
 
 
