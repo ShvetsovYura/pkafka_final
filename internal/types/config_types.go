@@ -46,8 +46,8 @@ type CommonConfig struct {
 
 type Certs struct {
 	CaCertLocation  string `yaml:"ca_cert_location" json:"ca_cert_location"`
-	CertLocation    string `yaml:"cert_location" json:"cert_location"`
-	CertKeyLocation string `yaml:"cert_key_location" json:"cert_key_location"`
+	CertLocation    string `yaml:"client_cert_location" json:"client_cert_location"`
+	CertKeyLocation string `yaml:"client_cert_key_location" json:"client_cert_key_location"`
 }
 
 type Cred struct {

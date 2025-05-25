@@ -1,119 +1,119 @@
 ---
 # version: '3.8'
 include:
-  # - compose.kafka-main.yml
-  # - compose.kafka-replica.yml
-  - compose.analytics.yml
-  # - compose.monitoring.yml
-# services:
-  #   connect:
-  #     image: confluentinc/cp-kafka-connect:7.7.1
-  #     hostname: connect
-  #     container_name: connect
-  #     depends_on:
-  #       - broker1
-  #       - broker2
-  #       - broker3
-  #       - sr
-  #     ports:
-  #       - 8083:8083
-  #       - 9876:9876
-  #     environment:
-  #       CONNECT_BOOTSTRAP_SERVERS: broker1:29092,broker2:29092,broker3:29092
-  #       CONNECT_REST_ADVERTISED_HOST_NAME: connect
-  #       CONNECT_GROUP_ID: connect-group
-  #       CONNECT_CONFIG_STORAGE_TOPIC: connect-configs
-  #       CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
-  #       CONNECT_OFFSET_STORAGE_TOPIC: connect-offsets
-  #       CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
-  #       CONNECT_STATUS_STORAGE_TOPIC: connect-status
-  #       CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
-  #       CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
-  #       CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-  #       # CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
-  #       CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://sr:8081
-  #       CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components,/etc/kafka-connect/jars"
-  #       # Export JMX metrics to :9876/metrics for Prometheus
-  #       KAFKA_JMX_PORT: '9875'
-  #       KAFKA_OPTS: "-javaagent:/opt/jmx_prometheus_javaagent-0.15.0.jar=9876:/opt/kafka-connect.yml"
-  #       # Read connection password from file
-  #       # CONNECT_CONFIG_PROVIDERS: "file"
+  - compose.kafka-main.yml
+  - compose.kafka-replica.yml
+  # - compose.analytics.yml
+  - compose.monitoring.yml
+services:
+  connect:
+    image: confluentinc/cp-kafka-connect:7.7.1
+    hostname: connect
+    container_name: connect
+    depends_on:
+      - broker1
+      - broker2
+      - broker3
+      - sr
+    ports:
+      - 8083:8083
+      - 9876:9876
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: broker1:29092,broker2:29092,broker3:29092
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+      CONNECT_GROUP_ID: connect-group
+      CONNECT_CONFIG_STORAGE_TOPIC: connect-configs
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_TOPIC: connect-offsets
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_TOPIC: connect-status
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      # CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://sr:8081
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components,/etc/kafka-connect/jars"
+      # Export JMX metrics to :9876/metrics for Prometheus
+      KAFKA_JMX_PORT: '9875'
+      KAFKA_OPTS: "-javaagent:/opt/jmx_prometheus_javaagent-0.15.0.jar=9876:/opt/kafka-connect.yml"
+      # Read connection password from file
+      # CONNECT_CONFIG_PROVIDERS: "file"
 
-  #     volumes:
-  #       - ./confluent-hub-components/:/etc/kafka-connect/jars
-  #       - ./confluent-hub-components/jmx_prometheus_javaagent-0.15.0.jar:/opt/jmx_prometheus_javaagent-0.15.0.jar
-  #       - ./configs/connect/:/opt/
-  #     healthcheck:
-  #       test: [ "CMD", "curl", "-f", "http://localhost:8083/connectors" ]
-  #       interval: 5s
-  #       timeout: 10s
-  #       retries: 10
-  #     networks:
-  #       pnet:
-
-
-  #   connectors-init:
-  #     image: curlimages/curl:latest
-  #     container_name: connectors-init
-  #     hostname: connectors-init
-  #     depends_on:
-  #       connect:
-  #         condition: service_healthy
-  #     restart: on-failure
-  #     command: >
-  #       sh -c "
-  #         echo 'Waiting for Kafka Connect to start...';
-  #         sleep 10;
-
-  #         echo 'Registering Elasticsearch Sink Connector...';
-  #         curl -X POST -H 'Content-Type: application/json' --data @/config/elastic-sink.json http://connect:8083/connectors;
-  #         echo 'Registering Hadoop Sink Connector...';
-  #         curl -X POST -H 'Content-Type: application/json' --data @/config/hadoop-sink.json http://connect:8083/connectors;
-  #         echo 'Registering Mirror Maker 2...';
-  #         curl -X POST -H 'Content-Type: application/json' --data @/config/mirror2-sink.json http://connect:8083/connectors;
-
-  #         echo 'Connectors registered!';
-  #       "
-  #     volumes:
-  #       - ./connectors:/config
-  #     networks:
-  #       pnet:
+    volumes:
+      - ./confluent-hub-components/:/etc/kafka-connect/jars
+      - ./confluent-hub-components/jmx_prometheus_javaagent-0.15.0.jar:/opt/jmx_prometheus_javaagent-0.15.0.jar
+      - ./configs/connect/:/opt/
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8083/connectors" ]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    networks:
+      pnet:
 
 
-  #   sr:
-  #     image: confluentinc/cp-schema-registry:7.4.0
-  #     hostname: sr
-  #     container_name: sr
-  #     depends_on:
-  #       broker1:
-  #         condition: service_healthy
-  #     ports:
-  #       - 8081:8081
-  #     environment:
-  #       SCHEMA_REGISTRY_HOST_NAME: sr
-  #       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker1:29092,broker2:29092,broker3:29092'
-  #       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
-  #     networks:
-  #       pnet:
+  connectors-init:
+    image: curlimages/curl:latest
+    container_name: connectors-init
+    hostname: connectors-init
+    depends_on:
+      connect:
+        condition: service_healthy
+    restart: on-failure
+    command: >
+      sh -c "
+        echo 'Waiting for Kafka Connect to start...';
+        sleep 10;
+
+        echo 'Registering Elasticsearch Sink Connector...';
+        curl -X POST -H 'Content-Type: application/json' --data @/config/elastic-sink.json http://connect:8083/connectors;
+        echo 'Registering Hadoop Sink Connector...';
+        curl -X POST -H 'Content-Type: application/json' --data @/config/hadoop-sink.json http://connect:8083/connectors;
+        echo 'Registering Mirror Maker 2...';
+        curl -X POST -H 'Content-Type: application/json' --data @/config/mirror2-sink.json http://connect:8083/connectors;
+
+        echo 'Connectors registered!';
+      "
+    volumes:
+      - ./connectors:/config
+    networks:
+      pnet:
 
 
-  # elastic:
-  #   image: elasticsearch:8.12.0
-  #   container_name: elastic
-  #   hostname: elastic
-  #   ports:
-  #     - 9200:9200
-  #   depends_on:
-  #     - broker1
-  #     # - connect
-  #   environment:
-  #     - discovery.type=single-node
-  #     - ES_JAVA_OPTS=-Xms1g -Xmx1g
-  #     - xpack.security.enabled=false # Отключаем security для разработки
-  #   volumes:
-  #     - es_data:/usr/share/elasticsearch/data
-  #   networks:
-  #     pnet:
+  sr:
+    image: confluentinc/cp-schema-registry:7.4.0
+    hostname: sr
+    container_name: sr
+    depends_on:
+      broker1:
+        condition: service_healthy
+    ports:
+      - 8081:8081
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: sr
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker1:29092,broker2:29092,broker3:29092'
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    networks:
+      pnet:
+
+
+  elastic:
+    image: elasticsearch:8.12.0
+    container_name: elastic
+    hostname: elastic
+    ports:
+      - 9200:9200
+    depends_on:
+      - broker1
+      # - connect
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+      - xpack.security.enabled=false # Отключаем security для разработки
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      pnet:
 
 
 networks:

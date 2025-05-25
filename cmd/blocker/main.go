@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -14,8 +15,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func RunBlocker() {
-	data, err := os.ReadFile("config.yaml")
+func main() {
+	name := flag.String("config", "", "path to config file")
+	flag.Parse()
+
+	data, err := os.ReadFile(*name)
 	if err != nil {
 		log.Fatalf("Failed to read config file: %v", err)
 	}
@@ -33,14 +37,11 @@ func RunBlocker() {
 	defer func() {
 		close(blockCh)
 		stop()
-
 	}()
-
-	// cwd, _ := os.Getwd()
 
 	blocker := blockservice.NewBlocker(cfg.BootstrapServers, cfg.Topics, cfg.Certs, cfg.Credentials)
 
-	blockerApi := blockservice.NewBlockerWebapi(":9091", blockCh)
+	blockerApi := blockservice.NewBlockerWebapi(cfg.WebAPI.Listen, blockCh)
 	wg.Add(2)
 	go blocker.RunEmmiter(ctx, wg, blockCh)
 	go blocker.RunProcessor(ctx)

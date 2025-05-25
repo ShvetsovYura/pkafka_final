@@ -18,16 +18,16 @@ type ClientProducer struct {
 
 func NewClientProducer(topic string, cfg types.ProducerConfig) *ClientProducer {
 	cfgMap := kafka.ConfigMap{
-		"bootstrap.servers":                   cfg.BootstrapServers, //"kafka.local:9994",
-		"security.protocol":                   cfg.SecurityProtocol, //"SASL_SSL",
-		"ssl.ca.location":                     cfg.CACertLocation,   //"ca.crt",
-		"sasl.mechanism":                      cfg.SASLMechanism,    //"PLAIN",
-		"sasl.username":                       cfg.SASLUsername,     //"admin",
-		"sasl.password":                       cfg.SASLPassword,     //"admin-secret",
-		"ssl.certificate.location":            cfg.CertLocation,     //"/etc/kafka/service.cert",
-		"ssl.key.location":                    cfg.CertKeyLocation,  //"/etc/kafka/service.key",
-		"acks":                                cfg.Acks,             //"all",
-		"client.id":                           cfg.ClientID,         //"client-producer",
+		"bootstrap.servers":                   cfg.BootstrapServers,
+		"security.protocol":                   cfg.SecurityProtocol,
+		"ssl.ca.location":                     cfg.CACertLocation,
+		"sasl.mechanisms":                     cfg.SASLMechanism,
+		"sasl.username":                       cfg.SASLUsername,
+		"sasl.password":                       cfg.SASLPassword,
+		"ssl.certificate.location":            cfg.CertLocation,
+		"ssl.key.location":                    cfg.CertKeyLocation,
+		"acks":                                cfg.Acks,
+		"client.id":                           cfg.ClientID,
 		"enable.ssl.certificate.verification": cfg.EnableCertVerify,
 	}
 

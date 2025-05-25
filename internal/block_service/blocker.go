@@ -84,10 +84,6 @@ func NewBlocker(brokers []string, topics types.BlockerTopics, cert types.Certs, 
 		productOutStream:   goka.Stream(topics.OutTopic),
 		productFilterGroup: "product_filter",
 		connectionConfig:   config,
-		// 	productCodec: productCodec{
-		// 		srClient:  schemaRegistryClient,
-		// 		topicName: topics.InTopic,
-		// 	},
 	}
 }
 

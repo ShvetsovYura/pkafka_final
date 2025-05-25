@@ -1,33 +1,33 @@
 services:
 
-  kafka-exporter:
-    image: danielqsj/kafka-exporter:latest
-    container_name: kafka-exporter
-    depends_on:
-      - broker1
-    command:
-      - --kafka.server=broker1:29092
-      - --web.listen-address=:9308
-      - --web.telemetry-path=/metrics
-    networks:
-      pnet:
+  # kafka-exporter:
+  #   image: danielqsj/kafka-exporter:latest
+  #   container_name: kafka-exporter
+  #   depends_on:
+  #     - broker1
+  #   command:
+  #     - --kafka.server=broker1:29092
+  #     - --web.listen-address=:9308
+  #     - --web.telemetry-path=/metrics
+  #   networks:
+  #     pnet:
 
 
-  jmx-broker1:
-    image: sscaling/jmx-prometheus-exporter:latest
-    container_name: jmx-broker1
-    hostname: jmx-broker1
-    ports:
-      - 5511:5556
-    volumes:
-      - ./configs/broker1/jmx_config.yml:/etc/jmx_exporter/config.yml
-    environment:
-      CONFIG_YML: "/etc/jmx_exporter/config.yml"
-      JVM_OPTS: "-Xmx128m"
-    depends_on:
-      - broker1
-    networks:
-      pnet:
+  # jmx-broker1:
+  #   image: sscaling/jmx-prometheus-exporter:latest
+  #   container_name: jmx-broker1
+  #   hostname: jmx-broker1
+  #   ports:
+  #     - 5511:5556
+  #   volumes:
+  #     - ./configs/broker1/jmx_config.yml:/etc/jmx_exporter/config.yml
+  #   environment:
+  #     CONFIG_YML: "/etc/jmx_exporter/config.yml"
+  #     JVM_OPTS: "-Xmx128m"
+  #   depends_on:
+  #     - broker1
+  #   networks:
+  #     pnet:
 
   ui:
     image: provectuslabs/kafka-ui:v0.7.2

@@ -7,9 +7,9 @@ topics:
   in_topic: procucts_in
   out_topic: products
 certs:
-  ca_cert_location: ''
-  client_cert_locatoin: ''
-  client_cert_key_location: ''
+  ca_cert_location: '/home/yura/Documents/pkafka_final/cmd/blocker/ca.crt'
+  client_cert_location: /home/yura/Documents/pkafka_final/cmd/blocker/client.pem
+  client_cert_key_location: /home/yura/Documents/pkafka_final/cmd/blocker/client.key
 cred:
   username: kafka-internal
   password: H6tFPQDI9Wnu

@@ -22,15 +22,14 @@ func RunCalc(ctx context.Context, addr string, dataPath string, producer *kafka.
 	if err != nil {
 		return fmt.Errorf("connection test failed: %w", err)
 	}
-	dp := "/data/super_user_id/a24b39e1-fd7c-48bd-a0d4-e3639add0708"
-	df, err := spark.Read().
+	df, _ := spark.Read().
 		Format("json").
 		Option("header", "true").
 		Option("inferSchema", "true").
-		Load(dp)
-	if err != nil {
-		return err
-	}
+		Load(dataPath)
+	// if err != nil {
+	// 	return err
+	// }
 	err = df.Show(ctx, 100, true)
 	if err != nil {
 		log.Fatal(err)

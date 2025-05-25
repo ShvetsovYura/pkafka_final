@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"os"
 	"sync"
@@ -14,7 +15,9 @@ import (
 )
 
 func main() {
-	data, err := os.ReadFile("config.yaml")
+	name := flag.String("config", "", "путь до конфигурационного файла")
+	flag.Parse()
+	data, err := os.ReadFile(*name)
 	if err != nil {
 		log.Fatalf("Failed to read config file: %v", err)
 	}
@@ -30,7 +33,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// cwd, _ := os.Getwd()
+
 	shopProducer := shopservice.NewShopProducer(cfg.Producer.Topic, cfg.Producer, sr)
 	go shopProducer.Run(context.TODO(), &wg, productCh)
 	go shopservice.StartApi(cfg.WebAPI.Listen, productCh)

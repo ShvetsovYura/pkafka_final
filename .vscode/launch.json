@@ -1,0 +1,46 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "shop_api",
+            "type": "go",
+            "mode": "debug",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmd/shop",
+            "args": ["--config=config.yml"]
+        },
+        {
+            "name": "blocker",
+            "type": "go",
+            "mode": "debug",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmd/blocker",
+            "args": ["--config=config.yml"]
+        },
+        {
+            "name": "client",
+            "type": "go",
+            "mode": "debug",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmd/client",
+            "args": ["--config=config.yml"]
+        },{
+            "name": "analytics",
+            "type": "go",
+            "mode": "debug",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmd/analytics",
+            "args": ["--config=cofnig.yml"]
+        }
+        {
+            "name": "Launch Package",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${fileDirname}"
+        }
+    ]
+}
